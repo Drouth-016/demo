@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<meta name="viewport" content="width=640, user-scalable=no">
+<meta http-equiv="pragma" content="no-cache">
+<meta http-equiv="Cache-Control" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-title" content="">
+<title>上滑、下滑设置：缩放+透明度切换页面</title>
+<style type="text/css">
+@charset "utf-8";
+*{ margin:0px; padding:0px; box-sizing:border-box; -webkit-tap-highlight-color:rgba(0,0,0,0);}
+html{ max-width:640px; margin:0 auto;}
+body{ font-family:"PingFangSC-Regular","sans-serif","STHeitiSC-Light","微软雅黑","Microsoft YaHei"; font-size:300px; line-height:1.5em; color:#000;
+    -webkit-user-select:none; user-select:none;
+    -webkit-touch-callout:none; touch-callout:none;
+}
+html , body{ width:100%; height:100%; position:relative;/* overflow:hidden;*/}
+body{ background-color: #fff repeat-y; background-size:100%;}
+.page_box{ width:100%; height:100%; position:relative; overflow:hidden;}
+.page{display:flex; justify-content:center; align-items:center; width:100%; height:100%; position:absolute; left:0; top:0;}
+.page_box img{width:100%; height:100%}
+.page.hide{ display:none;}
+</style>
+</head>
+ 
+<body>
+ 
+<section class="page_box">
+	<div class="page"><img src="img/换装.jpg" ><img></div>
+	<div class="page"><img src="img/1.png" ><img></div>
+	<div class="page"><img src="img/3.jpg" ><img></div>
+    <div class="page"><img src="img/2.jpg" ><img></div>
+    <div class="page"><img src="img/1.jpg" ><img></div>
+    <div class="page"><img src="img/首页.jpg" ><img></div>
+</section>
+ 
+ 
+<script type="text/javascript" src="https://cdn.bootcss.com/jquery/1.11.2/jquery.min.js"></script>
+<script type="text/javascript">
+//$('.page').height($(window).height());
+document.addEventListener("touchmove", function(e){
+	e.preventDefault();
+}, false);
+ 
+var startY , endY , diff;
+var timer;
+$('.page_box').on('touchstart',function(e){
+	var touch = e.originalEvent.targetTouches[0];
+	startY = touch.pageY;
+});
+$('.page_box').on('touchmove',function(e){
+	var touch = e.originalEvent.targetTouches[0];
+	endY = touch.pageY;
+	diff = endY - startY;
+	setPageData();
+});
+$('.page_box').on('touchend',function(e){
+	clearInterval(timer);
+	if(changePageTime > 0){
+		changePageTime = 0;
+	}
+	$('.page_box .page').each(function(index, element) {
+        if(parseFloat($(element).css('opacity')) <= .02){
+			$(element).addClass('hide');
+		}
+    });
+	
+});
+ 
+var pageLen  = $('.page_box .page').length;
+var minScale = .1;
+$('.page_box .page').not(':last').css({'-webkit-transform':'scale(' + minScale + ')','transform':'scale(' + minScale + ')'});
+var startTouchData = 0 , endTouchData = 100;
+var curPage = pageLen - 1 , nextPage;
+//缩放步长值
+var stepScale = (1 - minScale) / endTouchData;
+//页面放大的最大值
+var maxScale = 1 + (stepScale * endTouchData);
+//透明度步长值(缩小 - 向前一页时)
+var StepOpacity  = 1 / endTouchData;
+//透明度步长值(放大 - 向后一页时)
+//var StepOpacity2 = 1 / (endTouchData / 2);
+var curOpacity , nextOpacity;
+//切换页面时停顿一会儿设置参数
+var changePageTime = 0 , changePageTimeMax = 20;
+//当前页及下一页缩放初始值
+var curScale = 1 , nextScale = minScale;
+var curScaleTo , nextScaleTo;
+ 
+function setPageData(){
+	if(changePageTime > 0){
+		changePageTime--;
+		return;
+	}
+	
+	if(diff > 0 && (curPage < pageLen - 1 || startTouchData  > 0)){
+		if(startTouchData > 0){
+			nextPage = curPage - 1;
+		}else{
+			nextPage = curPage + 1;
+		}
+		
+		//向前一页
+		startTouchData--;
+		if(startTouchData < 0){
+			changePageTime = changePageTimeMax;
+			startTouchData = endTouchData;
+			if(curPage < pageLen - 1){
+				curPage++;
+				curScale = maxScale;
+				nextScale = 1;
+			}
+			return;
+		}
+		curScaleTo = curScale - stepScale;
+		nextScaleTo = nextScale - stepScale;
+		setPageGo();
+	}else if(diff < 0 && (curPage > 0 || startTouchData  > 0)){
+		nextPage = curPage - 1;
+		
+		//向下一页
+		startTouchData++;
+		if(startTouchData > endTouchData){
+			changePageTime = changePageTimeMax;
+			startTouchData = 0;
+			if(curPage > 0){
+				curPage--;
+				curScale = 1;
+				nextScale = minScale;
+			}
+			return;
+		}
+		
+		curScaleTo = curScale + stepScale;
+		nextScaleTo = nextScale + stepScale;
+		setPageGo();
+	}
+	
+	function setPageGo(){
+		var curOldScale  = parseFloat($('.page_box .page').eq(curPage).css('opacity'));
+		var nextOldScale = parseFloat($('.page_box .page').eq(nextPage).css('opacity'));
+		if(curScale < curScaleTo && curScaleTo > 1){
+//			curOpacity  = curOldScale - StepOpacity2;
+//			nextOpacity = nextOldScale + StepOpacity2;
+			curOpacity  = curOldScale - StepOpacity;
+			nextOpacity = nextOldScale + StepOpacity;
+		}else if(curScale > curScaleTo && curScaleTo > 1){
+			curOpacity  = curOldScale + StepOpacity;
+			nextOpacity = nextOldScale - StepOpacity;
+		}
+		
+		curScale = curScaleTo;
+		nextScale = nextScaleTo;
+		
+//		curOpacity  = curScale < 1 ? 1 : curOpacity;
+//		nextOpacity = nextScale < 1 ? 1 : nextOpacity;
+		curOpacity  = curScale < 1 ? 1 : curOpacity < 0 ? 0 : curOpacity > 1 ? 1 : curOpacity;
+		nextOpacity = nextScale < 1 ? 1 : nextOpacity < 0 ? 0 : nextOpacity > 1 ? 1 : nextOpacity;
+		
+		$('.page_box .page').eq(curPage).css({'-webkit-transform':'scale(' + curScale + ')','-webkit-transform':'scale(' + curScale + ')','opacity':curOpacity});
+		$('.page_box .page').eq(nextPage).css({'-webkit-transform':'scale(' + nextScale + ')','-webkit-transform':'scale(' + nextScale + ')','opacity':nextOpacity});
+ 
+		if(curOpacity){
+			$('.page_box .page').eq(curPage).removeClass('hide');
+		}
+		if(nextOpacity){
+			$('.page_box .page').eq(nextPage).removeClass('hide');
+		}
+	}
+	
+	clearInterval(timer);
+	timer = setInterval(setPageData,1);
+}
+</script>
+</body>
+</html>
